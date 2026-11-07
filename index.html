@@ -560,12 +560,36 @@ footer{background:var(--noir-soft);padding:64px 5vw 36px;border-top:1px solid rg
   section{padding:44px 5vw}
 }
 
+/* FLOATING CTA */
+.floating-cta{
+  --cta-offset:28px;
+  position:fixed;bottom:var(--cta-offset);right:28px;z-index:150;
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--pink);color:var(--white);
+  font-family:var(--font-body);font-size:12px;font-weight:500;
+  letter-spacing:.14em;text-transform:uppercase;
+  padding:16px 26px;border-radius:32px;text-decoration:none;
+  box-shadow:0 10px 30px rgba(168,57,79,.38);
+  opacity:0;transform:translateY(16px) scale(.94);pointer-events:none;
+  transition:opacity .4s var(--ease-silk),transform .4s var(--ease-silk),background .3s,box-shadow .3s;
+}
+.floating-cta.visible{opacity:1;transform:translateY(0) scale(1);pointer-events:all}
+.floating-cta:hover{background:var(--pink-deep);box-shadow:0 12px 34px rgba(168,57,79,.48)}
+.floating-cta svg{width:14px;height:14px;flex-shrink:0}
+.floating-cta-short{display:none}
+@media(max-width:768px){
+  .floating-cta{--cta-offset:18px;right:18px;padding:13px 18px;font-size:10px;gap:6px}
+  .floating-cta-full{display:none}
+  .floating-cta-short{display:inline}
+}
+
 /* ── NOTCH / DYNAMIC ISLAND SAFE AREAS ── */
 @supports(padding-bottom:env(safe-area-inset-bottom)){
   .cta-actions{padding-bottom:env(safe-area-inset-bottom)}
   footer{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
   .modal{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
   nav{padding-top:max(14px,env(safe-area-inset-top))}
+  .floating-cta{bottom:calc(var(--cta-offset) + env(safe-area-inset-bottom))}
 }
 </style>
 </head>
@@ -573,6 +597,12 @@ footer{background:var(--noir-soft);padding:64px 5vw 36px;border-top:1px solid rg
 
 <div class="cursor" id="cursor"></div>
 <div class="cursor-ring" id="cursorRing"></div>
+
+<a href="#" class="floating-cta" id="floatingCta" onclick="openModal();return false" aria-label="Let's Plan Your Experience">
+  <svg viewBox="0 0 13 12" fill="currentColor" aria-hidden="true"><path d="M6.5 11s-5.5-3.5-5.5-7a3 3 0 0 1 5.5-1.7A3 3 0 0 1 12 4c0 3.5-5.5 7-5.5 7z"/></svg>
+  <span class="floating-cta-full">Let's Plan Your Experience</span>
+  <span class="floating-cta-short" aria-hidden="true">Book Now</span>
+</a>
 
 <!-- MOBILE NAV -->
 <div class="mobile-nav" id="mobileNav">
@@ -1059,6 +1089,27 @@ document.querySelectorAll('a,button,.exp-card,.vgallery-item,.testi-card').forEa
 const navbar=document.getElementById('navbar');
 window.addEventListener('scroll',()=>navbar.classList.toggle('scrolled',window.scrollY>60),{passive:true});
 
+// FLOATING CTA — appears after the hero, hides near sections that already have their own booking CTA
+const floatingCta=document.getElementById('floatingCta');
+let floatingCtaPastHero=false;
+const floatingCtaOverlapping=new Set();
+function updateFloatingCta(){
+  floatingCta.classList.toggle('visible', floatingCtaPastHero && floatingCtaOverlapping.size===0);
+}
+window.addEventListener('scroll',()=>{
+  floatingCtaPastHero = window.scrollY > window.innerHeight*0.8;
+  updateFloatingCta();
+},{passive:true});
+const ownCtaSections=document.querySelectorAll('.cta-banner, footer, .exp-cta-strip');
+const floatingCtaObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting) floatingCtaOverlapping.add(e.target);
+    else floatingCtaOverlapping.delete(e.target);
+  });
+  updateFloatingCta();
+},{threshold:0,rootMargin:'0px 0px -10% 0px'});
+ownCtaSections.forEach(el=>floatingCtaObs.observe(el));
+
 // REVEAL
 const obs=new IntersectionObserver(entries=>{
   entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}});
@@ -1075,8 +1126,8 @@ const overlay=document.getElementById('modalOverlay');
 document.getElementById('modalClose').addEventListener('click',closeModal);
 overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeMobileNav()}});
-function openModal(){overlay.classList.add('open');document.body.style.overflow='hidden'}
-function closeModal(){overlay.classList.remove('open');document.body.style.overflow=''}
+function openModal(){overlay.classList.add('open');document.body.style.overflow='hidden';floatingCta.classList.remove('visible')}
+function closeModal(){overlay.classList.remove('open');document.body.style.overflow='';updateFloatingCta()}
 
 // HERO VIDEO SWITCHER
 const heroVid=document.getElementById('heroVid');
